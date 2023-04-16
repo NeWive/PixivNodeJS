@@ -1,3 +1,5 @@
+import * as ConstSet from "../constSet";
+
 export type Method = "get" | "post";
 
 export interface ParamType {
@@ -80,7 +82,7 @@ interface IllustDetailedInfo extends IllustInfo{
 
 export interface UserIllusts{
     illusts: Array<IllustInfo>;
-    next_url: string;
+    next_url: string | null;
 }
 
 export interface RelatedUserInfo {
@@ -116,4 +118,79 @@ export interface RecommendedIllust{
     next_url: string;
 }
 
+interface TrendingTag extends TagInfo {
+    illust: IllustInfo;
+}
 
+export interface TrendingTagIllust {
+    trend_tags: Array<TrendingTag>;
+}
+
+
+export interface RecommendedIllustConfigArg {
+    max_bookmark_id_for_recommend?: number | string;
+    min_bookmark_id_for_recent_illust?: number | string;
+    include_ranking_illusts?: boolean;
+    bookmark_illust_ids?: Array<number | string>;
+    include_privacy_policy?: Array<number | string>;
+    include_ranking_label?: boolean;
+    filter?: ConstSet.FILTER;
+    content_type?: ConstSet.CONTENT_TYPE;
+    offset?: number;
+}
+
+export interface UserIllustConfigArg {
+    type?: ConstSet.IllustType;
+    filter?: ConstSet.FILTER;
+    offset?: number
+}
+
+export interface UserBookmarksIllustConfigArg {
+    max_bookmark_id?: string;
+    tag?: string;
+    restrict?: ConstSet.RESTRICT;
+    filter?: ConstSet.FILTER;
+}
+
+export interface RelatedUserConfigArg {
+    offset?: number;
+    filter?: ConstSet.FILTER;
+}
+
+export interface FollowedNewIllustConfigArg {
+    offset?: number;
+    restrict?: ConstSet.RESTRICT;
+}
+
+export interface IllustCommentConfigArg {
+    offset?: number;
+    include_total_comments?: boolean;
+}
+
+export interface RelatedIllustConfigArg {
+    offset?: number;
+    filter?: ConstSet.FILTER;
+}
+
+export interface IllustRankingConfigArg {
+    offset?: number;
+    mode?: ConstSet.MODE;
+    filter?: ConstSet.FILTER;
+    date?: string;
+}
+
+export interface TrendingTagsIllustConfigArg {
+    filter?: ConstSet.FILTER;
+}
+
+export interface SearchIllustConfigArg {
+    offset?: number;
+    sort?: ConstSet.SORT;
+    search_target?: ConstSet.SEARCH_TARGET;
+    duration?: ConstSet.DURATION;
+    filter?: ConstSet.FILTER;
+}
+
+export interface UserDetailConfigArg {
+    filter?: ConstSet.FILTER;
+}

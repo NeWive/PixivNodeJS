@@ -9,7 +9,20 @@ import {
     UserDetail,
     RelatedUser,
     IllustDetail,
-    IllustComment, RecommendedIllust
+    IllustComment,
+    RecommendedIllust,
+    TrendingTagIllust,
+    UserIllustConfigArg,
+    UserBookmarksIllustConfigArg,
+    RelatedUserConfigArg,
+    FollowedNewIllustConfigArg,
+    IllustCommentConfigArg,
+    RelatedIllustConfigArg,
+    RecommendedIllustConfigArg,
+    IllustRankingConfigArg,
+    TrendingTagsIllustConfigArg,
+    SearchIllustConfigArg,
+    UserDetailConfigArg
 } from "./@types/PixivAPI";
 import * as https from "https";
 import {SocksProxyAgent} from "socks-proxy-agent";
@@ -20,15 +33,6 @@ import {createWriteStream} from "fs";
 import * as ConstSet from "./constSet";
 import path from "path";
 import {checkHasProperty} from "./util";
-
-interface RecommendedIllustConfigArg {
-    max_bookmark_id_for_recommend?: number | string,
-    min_bookmark_id_for_recent_illust?: number | string,
-    include_ranking_illusts?: boolean,
-    bookmark_illust_ids?: Array<number | string>,
-    include_privacy_policy?: Array<number | string>
-    include_ranking_label?: boolean;
-}
 
 class PixivClient {
     private clientID = "MOBrBDS8blbauoSck0ZfDbtuzpyT"
@@ -42,6 +46,7 @@ class PixivClient {
     private requester: AxiosInstance;
     private proxyHost: string = "";
     private proxyPort: number = 1;
+    private useProxy: boolean = false;
 
     // 只支持socks
     constructor() {
@@ -61,6 +66,10 @@ class PixivClient {
         this.proxyPort = port;
     }
 
+    public setUseProxy(useProxy: boolean) {
+        this.useProxy = useProxy;
+    }
+
     private getMD5(key: string) {
         const md5 = crypto.createHash("md5");
         return md5.update(key, "utf-8").digest("hex");
@@ -76,12 +85,11 @@ class PixivClient {
         url: string,
         headers: AxiosRequestHeaders,
         params: ParamType,
-        data: unknown,
-        useProxy: boolean
+        data: unknown
     ): Promise<boolean> {
         const writer = createWriteStream(path);
         let httpsAgent;
-        if(useProxy) {
+        if(this.useProxy) {
             if(this.proxyHost && this.proxyPort) {
                 httpsAgent = new SocksProxyAgent(`socks5://${this.proxyHost}:${this.proxyPort}`);
             } else {
@@ -156,12 +164,11 @@ class PixivClient {
         url: string,
         headers: AxiosRequestHeaders,
         params: ParamType,
-        data: unknown,
-        useProxy: boolean
+        data: unknown
     ) {
         // const mergedHeaders = this.mergeHeaders(headers, this.requester.defaults.headers);
         let httpsAgent;
-        if(useProxy) {
+        if(this.useProxy) {
             if(this.proxyHost && this.proxyPort) {
                 httpsAgent = new SocksProxyAgent(`socks5://${this.proxyHost}:${this.proxyPort}`);
             } else {
@@ -255,13 +262,11 @@ class PixivClient {
     }
 
     public async auth(
-        headers: ParamType,
-        refresh_token?: string
+        refreshToken: string
     ) {
         let localTime = moment().utcOffset(0).format("YYYY-MM-DDTHH:mm:ss+00:00");
         let mergedHeaders: ParamType = {
             ...this.requester.defaults.headers,
-            ...headers,
             "x-client-time": localTime,
             "x-client-hash": this.getMD5(localTime + this.hashSecret)
         };
@@ -271,14 +276,14 @@ class PixivClient {
             "client_id": this.clientID,
             "client_secret": this.clientSecret,
             "grant_type": "refresh_token",
-            "refresh_token": refresh_token ? refresh_token : this.refreshToken
+            "refresh_token": refreshToken ? refreshToken : this.refreshToken
         };
         if(!Object.prototype.hasOwnProperty.call(mergedHeaders, "user-agent")) {
             mergedHeaders["app-os"] = "ios";
             mergedHeaders["app-os-version"] = "14.6";
             mergedHeaders["user-agent"] = "PixivIOSApp/7.13.3 (iOS 14.6; iPhone13,2)"
         }
-        const res = await this.request("post", authHost, mergedHeaders as AxiosRequestHeaders, {}, qs.stringify(data), true);
+        const res = await this.request("post", authHost, mergedHeaders as AxiosRequestHeaders, {}, qs.stringify(data));
         if (res.status) {
             const data: AuthRes = res.data;
             this.userID = data.response.user.id;
@@ -309,8 +314,7 @@ class PixivClient {
                 url,
                 header as AxiosRequestHeaders,
                 {},
-                {},
-                true
+                {}
             );
         } catch (e) {
             console.error(e);
@@ -325,16 +329,14 @@ class PixivClient {
      * @param headers
      * @param param
      * @param data
-     * @param useProxy
      * @param auth
      */
-    public async requestWithAuth<T>(
+    private async requestWithAuth<T>(
         method: Method,
         url: string,
         headers: ParamType,
         param: any,
         data: any,
-        useProxy: boolean,
         auth: boolean = true,
     ) {
         const mergedHeaders: ParamType = {
@@ -348,37 +350,34 @@ class PixivClient {
         }
         if(auth) {
             mergedHeaders["Authorization"] = `Bearer ${this.accessToken}`;
-            const res = await this.request<T>(method, url, mergedHeaders as AxiosRequestHeaders, param, data, useProxy);
+            const res = await this.request<T>(method, url, mergedHeaders as AxiosRequestHeaders, param, data);
             if(res.status) {
                 return res.data as T;
             }
-            throw new Error(`请求时发生错误，Code: ${res.code}，${res.message}`);
+            console.log(res.data);
+            throw new Error(`请求时发生错误，Code: ${res.code}，${res.message}}`);
         } else {
-            const res = await this.request<T>(method, url, mergedHeaders as AxiosRequestHeaders, param, data, useProxy);
+            const res = await this.request<T>(method, url, mergedHeaders as AxiosRequestHeaders, param, data);
             if(res.status) {
                 return res.data as T;
             }
-            throw new Error(`请求时发生错误，Code: ${res.code}，${res.message}`);
+            throw new Error(`请求时发生错误，Code: ${res.code}，${res.message}, ${res}`);
         }
     }
 
     /**
      * 用户详情
      * @param userID
-     * @param withAuth
-     * @param filter
-     * @param useProxy
+     * @param config
      */
     public async getUserDetail(
         userID: string | number,
-        filter: ConstSet.FILTER = ConstSet.FILTER.for_ios,
-        withAuth: boolean = true,
-        useProxy: boolean = true
+        config: UserDetailConfigArg = {}
     ) {
         const url = `${this.host}/v1/user/detail`;
         const params: ParamType = {
             "user_id": userID,
-            "filter": filter,
+            "filter": ConstSet.FILTER.for_ios,
         };
         return await this.requestWithAuth<UserDetail>(
             "get",
@@ -386,34 +385,26 @@ class PixivClient {
             {},
             params,
             {},
-            useProxy,
-            withAuth
+            true
         );
     }
 
     /**
      * 用户作品列表
      * @param userID
-     * @param offset
-     * @param type
-     * @param filter
-     * @param withAuth
-     * @param useProxy
+     * @param config
      */
     public async getUserIllusts(
         userID: string | number,
-        offset: number = 0,
-        type: ConstSet.IllustType = ConstSet.IllustType.illust,
-        filter: ConstSet.FILTER = ConstSet.FILTER.for_ios,
-        withAuth: boolean = true,
-        useProxy: boolean = true
+        config: UserIllustConfigArg = {}
     ) {
         const url = `${this.host}/v1/user/illusts`;
         const params = {
             "user_id": userID,
-            "filter": filter,
-            type,
-            offset
+            type: ConstSet.IllustType.illust,
+            filter: ConstSet.FILTER.for_ios,
+            offset: 0,
+            ...config
         };
         return await this.requestWithAuth<UserIllusts>(
             "get",
@@ -421,73 +412,51 @@ class PixivClient {
             {},
             params,
             {},
-            useProxy,
-            withAuth
+            true
         );
     }
 
     /**
      * 用户收藏作品列表
      * @param userID
-     * @param maxBookmarkID
-     * @param tag
-     * @param restrict
-     * @param filter
-     * @param withAuth
-     * @param useProxy
+     * @param config
      */
-    public async getUserBookmarksIllust(
+    public async getUserBookmarksIllusts(
         userID: string | number,
-        maxBookmarkID?: string,
-        tag?: string,
-        restrict: ConstSet.RESTRICT = ConstSet.RESTRICT.pub,
-        filter: ConstSet.FILTER = ConstSet.FILTER.for_ios,
-        withAuth: boolean = true,
-        useProxy: boolean = true
+        config: UserBookmarksIllustConfigArg = {}
     ) {
         const url = `${this.host}/v1/user/bookmarks/illust`;
         const params = {
             "user_id": userID,
-            "restrict": restrict,
-            "filter": filter,
+            "restrict": ConstSet.RESTRICT.pub,
+            "filter": ConstSet.FILTER.for_ios,
+            ...config
         };
-        if(maxBookmarkID) {
-            params["max_bookmark_id"] = maxBookmarkID;
-        }
-        if(tag) {
-            params["tag"] = tag;
-        }
         return await this.requestWithAuth<UserIllusts>(
             "get",
             url,
             {},
             params,
             {},
-            useProxy,
-            withAuth
+            true
         );
     }
 
     /**
      * 获取相关用户
      * @param seedUserID
-     * @param offset
-     * @param filter
-     * @param withAuth
-     * @param useProxy
+     * @param config
      */
     public async getRelatedUser(
         seedUserID: number | string,
-        offset: number = 0,
-        filter: ConstSet.FILTER = ConstSet.FILTER.for_ios,
-        withAuth: boolean = true,
-        useProxy: boolean = true
+        config: RelatedUserConfigArg = {}
     ) {
         const url = `${this.host}/v1/user/related`;
         const params = {
-            "filter": filter,
-            "offset": offset,
-            "seed_user_id": seedUserID
+            "filter": ConstSet.FILTER.for_ios,
+            "offset": 0,
+            "seed_user_id": seedUserID,
+            ...config
         };
         return await this.requestWithAuth<RelatedUser>(
             "get",
@@ -495,28 +464,22 @@ class PixivClient {
             {},
             params,
             {},
-            useProxy,
-            withAuth
+            true
         );
     }
 
     /**
      * 获取已关注用户的更新
-     * @param offset
-     * @param restrict
-     * @param withAuth
-     * @param useProxy
+     * @param config
      */
     public async getFollowedNewIllusts(
-        offset: number = 0,
-        restrict: ConstSet.RESTRICT = ConstSet.RESTRICT.pub,
-        withAuth: boolean = true,
-        useProxy: boolean = true
+        config: FollowedNewIllustConfigArg = {}
     ) {
         const url = `${this.host}/v2/illust/follow`;
         const param = {
-            restrict,
-            offset
+            "restrict": ConstSet.RESTRICT.pub,
+            "offset": 0,
+            ...config
         };
         return await this.requestWithAuth<UserIllusts>(
             "get",
@@ -524,21 +487,16 @@ class PixivClient {
             {},
             param,
             {},
-            useProxy,
-            withAuth
+            true
         );
     }
 
     /**
      * 根据PID获取作品详情
      * @param illustID
-     * @param withAuth
-     * @param useProxy
      */
     public async getIllustDetail(
-        illustID: string | number,
-        withAuth: boolean = true,
-        useProxy: boolean = true
+        illustID: string | number
     ) {
         const url = `${this.host}/v1/illust/detail`;
         const params = {
@@ -550,31 +508,25 @@ class PixivClient {
             {},
             params,
             {},
-            useProxy,
-            withAuth
+            true
         );
     }
 
     /**
      * 获取作品评论
      * @param illustID
-     * @param offset
-     * @param includeTotalComments
-     * @param withAuth
-     * @param useProxy
+     * @param config
      */
     public async getIllustComment(
         illustID: number | string,
-        offset: number = 0,
-        includeTotalComments: boolean = false,
-        withAuth: boolean = true,
-        useProxy: boolean = true
+        config: IllustCommentConfigArg = {}
     ) {
         const url = `${this.host}/v1/illust/comments`;
         const params = {
             "illust_id": illustID,
-            offset,
-            "include_total_comments": includeTotalComments
+            "offset": 0,
+            "include_total_comments": false,
+            ...config
         };
         return await this.requestWithAuth<IllustComment>(
             "get",
@@ -582,33 +534,25 @@ class PixivClient {
             {},
             params,
             {},
-            useProxy,
-            withAuth
+            true
         );
     }
 
     /**
      * 相关作品列表
      * @param illustID
-     * @param filter
-     * @param offset
-     * @param withAuth
-     * @param useProxy
+     * @param config
      */
     public async getRelatedIllust(
         illustID: number | string,
-        filter: ConstSet.FILTER = ConstSet.FILTER.for_ios,
-        offset: number = 0,
-        // viewed: Array<string> = [],
-        // illustSeedID: Array<number> = [],
-        withAuth: boolean = true,
-        useProxy: boolean = true
+        config: RelatedIllustConfigArg = {}
     ) {
         const url = `${this.host}/v2/illust/related`;
         const params = {
             "illust_id": illustID,
-            filter,
-            offset
+            "filter": ConstSet.FILTER.for_ios,
+            "offset": 0,
+            ...config
         };
         return await this.requestWithAuth<UserIllusts>(
             "get",
@@ -616,56 +560,27 @@ class PixivClient {
             {},
             params,
             {},
-            useProxy,
-            withAuth
+            true
         );
     }
 
     /**
      * 插画推荐
-     * @param offset
-     * @param contentType
-     * @param filter
-     * @param useProxy
      * @param withAuth
      * @param config
      */
     public async getRecommendedIllust(
-        offset: number = 0,
-        config: RecommendedIllustConfigArg = {
-            include_ranking_label: true
-        },
-        contentType: ConstSet.CONTENT_TYPE = ConstSet.CONTENT_TYPE.illust,
-        filter: ConstSet.FILTER = ConstSet.FILTER.for_ios,
-        useProxy: boolean = true,
-        withAuth: boolean = true,
+        withAuth: boolean,
+        config: RecommendedIllustConfigArg = {},
     ) {
         const url = `${this.host}${withAuth ? "/v1/illust/recommended" : "/v1/illust/recommended-nologin"}`;
         const params = {
-            "content_type": contentType,
-            filter,
-            offset
+            "content_type": ConstSet.CONTENT_TYPE.illust,
+            "filter": ConstSet.FILTER.for_ios,
+            "offset": 0,
+            "include_ranking_label": true,
+            ...config
         };
-        if(checkHasProperty(config, "include_ranking_label")) {
-            params["include_ranking_label"] = config.include_ranking_label;
-        } else {
-            params["include_ranking_label"] = true;
-        }
-        if(checkHasProperty(config, "max_bookmark_id_for_recommend")) {
-            params["max_bookmark_id_for_recommend"] = config.max_bookmark_id_for_recommend;
-        }
-        if(checkHasProperty(config, "min_bookmark_id_for_recent_illust")) {
-            params["min_bookmark_id_for_recent_illust"] = config.min_bookmark_id_for_recent_illust;
-        }
-        if(checkHasProperty(config, "include_ranking_illusts")) {
-            params["include_ranking_illusts"] = config.include_ranking_illusts;
-        }
-        if(!withAuth && checkHasProperty(config, "bookmark_illust_ids")) {
-            params["bookmark_illust_ids"] = config.bookmark_illust_ids.join(",")
-        }
-        if(checkHasProperty(config, "include_privacy_policy")) {
-            params["include_privacy_policy"] = config.include_privacy_policy;
-        }
         //todo: ranking_illusts
         return await this.requestWithAuth<RecommendedIllust>(
             "get",
@@ -673,67 +588,100 @@ class PixivClient {
             {},
             params,
             {},
-            useProxy,
-            withAuth
+            true
         );
     }
 
-    //todo: 小说推荐
-
     /**
      * 作品排行
-     * @param offset
-     * @param mode
-     * @param filter
-     * @param withAuth
-     * @param useProxy
-     * @param data：格式"2016-08-01"
+     * @param config
      */
     public async getIllustRanking(
-        offset: number = 0,
-        mode: ConstSet.MODE = ConstSet.MODE.day,
-        filter: ConstSet.FILTER = ConstSet.FILTER.for_ios,
-        withAuth: boolean = true,
-        useProxy: boolean = true,
-        date?: string
+        config: IllustRankingConfigArg = {}
     ) {
         const url = `${this.host}/v1/illust/ranking`;
         const params = {
-            "mode": mode,
-            "filter": filter,
-            offset
+            "mode": ConstSet.MODE.day,
+            "filter": ConstSet.FILTER.for_ios,
+            "offset": 0,
+            ...config
         };
-        if(date) {
-            params["date"] = date;
-        }
-        return await this.requestWithAuth(
+        return await this.requestWithAuth<UserIllusts>(
             "get",
             url,
             {},
             params,
             {},
-            useProxy,
-            withAuth
+            true
         );
     }
 
-    //todo: 趋势标签
-
-    public async searchIllust(
-        word: string,
-        offset: number = 0,
-        searchTarget: ConstSet.SEARCH_TARGET = ConstSet.SEARCH_TARGET.partial_match_for_tags,
-        sort: ConstSet.SORT = ConstSet.SORT.date_asc,
-        duration: ConstSet.DURATION = ConstSet.DURATION.others,
-        // todo: start_date, end_date
-        filter: ConstSet.FILTER = ConstSet.FILTER.for_ios,
-        useProxy: boolean = true,
-        withAuth: boolean = true
+    /**
+     * 获取趋势标签作品
+     * @param withAuth
+     * @param config
+     */
+    public async getTrendingTagsIllust(
+        config: TrendingTagsIllustConfigArg = {}
     ) {
-        const url = `${this.host}/v1/search/illust`;
-
+        const url = `${this.host}/v1/trending-tags/illust`;
+        const params = {
+            "filter": ConstSet.FILTER.for_ios,
+            ...config
+        };
+        return await this.requestWithAuth<TrendingTagIllust>(
+            "get",
+            url,
+            {},
+            params,
+            {},
+            true
+        );
     }
 
+    /**
+     * 搜索作品
+     * @param word
+     * @param config
+     */
+    public async searchIllust(
+        word: string,
+        config: SearchIllustConfigArg = {}
+    ) {
+        const url = `${this.host}/v1/search/illust`;
+        const params = {
+            word,
+            "search_target": ConstSet.SEARCH_TARGET.keyword,
+            "sort": ConstSet.SORT.date_desc,
+            "filter": ConstSet.FILTER.for_ios,
+            "duration": ConstSet.DURATION.others,
+            "offset": 0,
+            ...config
+        };
+        return await this.requestWithAuth<UserIllusts>(
+            "get",
+            url,
+            {},
+            params,
+            {},
+            true
+        );
+    }
+
+    public async getNextPage<T>(
+        url: string
+    ) {
+        return await this.requestWithAuth<T>(
+            "get",
+            url,
+            {},
+            {},
+            {},
+            true
+        );
+    }
+
+    // todo: 小说推荐
     // todo: 搜索小说
     // todo: 搜索用户
     // todo: 作品收藏
