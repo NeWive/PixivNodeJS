@@ -103,7 +103,7 @@ async function main() {
     const client = new Index();
     client.setProxy("127.0.0.1", 10808);
     client.setUseProxy(true);
-    await client.auth("GvNl3pADffWDXRzsRvz2JggqyGDwYOsBPSzYNT6Ut-w");
+    await client.auth("1145141919810");
     console.log(client);
     console.log(await client.getUserDetail("275527"));
     console.log(await client.getUserBookmarksIllusts(2088434));
