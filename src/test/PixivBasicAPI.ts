@@ -1,4 +1,4 @@
-import PixivClient from "../PixivClient";
+import PixivClient from "../index";
 import {SORT} from "../constSet";
 import {UserIllusts} from "../@types/PixivAPI";
 

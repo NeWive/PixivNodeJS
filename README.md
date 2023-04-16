@@ -4,7 +4,7 @@ Pixiv API for NodeJS
 
 > 由于P站的原因无法使用用户名密码，请使用`refresh_token`进行替代
 > 
-> 获取`refresh_token`，请查看see [@ZipFile Pixiv OAuth Flow](https://gist.github.com/ZipFile/c9ebedb224406f4f11845ab700124362) or [OAuth with Selenium/ChromeDriver]( https://gist.github.com/upbit/6edda27cb1644e94183291109b8a5fde)
+> 获取`refresh_token`，请查看[@ZipFile Pixiv OAuth Flow](https://gist.github.com/ZipFile/c9ebedb224406f4f11845ab700124362) or [OAuth with Selenium/ChromeDriver]( https://gist.github.com/upbit/6edda27cb1644e94183291109b8a5fde)
 
 项目复刻自[@upbit/Pixivpy3](https://github.com/upbit/pixivpy)
 
@@ -28,7 +28,7 @@ import {
     UserIllusts
 } from "./src/@types/PixivAPI";
 
-class PixivClient {
+class Index {
     // 设置代理
     setProxy(host: string): void;
 
@@ -100,7 +100,7 @@ class PixivClient {
 
 ```typescript
 async function main() {
-    const client = new PixivClient();
+    const client = new Index();
     client.setProxy("127.0.0.1", 10808);
     client.setUseProxy(true);
     await client.auth("GvNl3pADffWDXRzsRvz2JggqyGDwYOsBPSzYNT6Ut-w");
